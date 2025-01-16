@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Attendance Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+    <div class="container mt-5">
+        <div class="container mt-5">
+            <h2 style="text-align: center; color: rebeccapurple;">Welcome to MyCollege Professor Portal</h2>
+            <div style="text-align: right;">
+                <a href="index.html">
+                    <img src="logout-removebg-preview.png" alt="Logout" style="width: 50px; height: 50px; cursor: pointer;">
+                </a>
+            </div>
+        </div>
+        
+        <hr>
+        <h3 class="text-center">Add Student</h3>
+        <form id="addStudentForm">
+            <div class="mb-3">
+                <label>Name</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="mb-3">
+                <label>Branch</label>
+                <select class="form-control" id="branch" required>
+                    <option value="">Select Branch</option>
+                    <option value="MBA">MBA</option>
+                    <option value="BTech">BTech</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label>Division</label>
+                <input type="text" class="form-control" id="division" required>
+            </div>
+            <div class="mb-3">
+                <label>Student ID</label>
+                <input type="text" class="form-control" id="student_id" required>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Add Student</button>
+        </form>
+        
+        <hr>
+        <h3 class="text-center">Delete Student</h3>
+    	<form id="deleteStudentForm">
+            <div class="mb-3">
+                <label>Student ID (Roll Number)</label>
+                <input type="text" class="form-control" id="deleteStudentId" required>
+            </div>
+            <button type="submit" class="btn btn-danger w-100">Delete Student</button>
+        </form>
+
+        <hr>
+
+        <h3 class="text-center">Mark Attendance</h3>
+        <form id="attendanceForm">
+            <div class="mb-3">
+                <label>Branch</label>
+                <select class="form-control" id="attendanceBranch" required>
+                    <option value="">Select Branch</option>
+                    <option value="MBA">MBA</option>
+                    <option value="BTech">BTech</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label>Division</label>
+                <select class="form-control" id="attendanceDivision" required>
+                    <option value="">Select Division</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label>Student</label>
+                <select class="form-control" id="attendanceStudent" required>
+                    <option value="">Select Student</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label>Month</label>
+                <input type="month" class="form-control" id="attendanceMonth" required>
+            </div>            
+            <div class="mb-3">
+                <label>Status</label>
+                <select class="form-control" id="status" required>
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Mark Attendance</button>
+        </form>
+
+        <hr>
+
+        <h3 class="text-center">View Attendance</h3>
+        <div id="attendanceReport"></div>
+    </div>
+
+    <script>
+
+document.getElementById('deleteStudentForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); 
+
+    const studentId = document.getElementById('deleteStudentId').value;
+
+    if (confirm(`Are you sure you want to delete the student with ID ${studentId}?`)) {
+        const response = await fetch(`/delete-student/${studentId}`, {
+            method: 'DELETE', // Use DELETE HTTP method
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            alert('Student deleted successfully!');
+            document.getElementById('deleteStudentForm').reset(); 
+        } else {
+            alert('Error deleting student: ' + data.error);
+        }
+    }
+});
+
+
+        // Fetching the divisions based on selected branch
+        async function fetchDivisions() {
+            const branch = document.getElementById('attendanceBranch').value;
+            const response = await fetch(`/divisions/${branch}`);
+            const divisions = await response.json();
+
+            const divisionSelect = document.getElementById('attendanceDivision');
+            divisionSelect.innerHTML = '<option value="">Select Division</option>'; // Reset division options
+
+            divisions.forEach(division => {
+                const option = document.createElement('option');
+                option.value = division.division;
+                option.textContent = division.division;
+                divisionSelect.appendChild(option);
+            });
+        }
+
+        // Fetching the student list based on selected branch and division
+        async function fetchStudents() {
+            const branch = document.getElementById('attendanceBranch').value;
+            const division = document.getElementById('attendanceDivision').value;
+            const response = await fetch('/students');
+            const data = await response.json();
+
+            const studentSelect = document.getElementById('attendanceStudent');
+            studentSelect.innerHTML = '<option value="">Select Student</option>'; // Reset student options
+
+            data.forEach(student => {
+                if (student.branch === branch && student.division === division) {
+                    const option = document.createElement('option');
+                    option.value = student.id;
+                    option.textContent = `${student.name} (${student.student_id})`;
+                    studentSelect.appendChild(option);
+                }
+            });
+        }
+
+        // Handle Branch change to fetch divisions and students accordingly
+        document.getElementById('attendanceBranch').addEventListener('change', async () => {
+            await fetchDivisions();
+            await fetchStudents();
+        });
+
+        // Handle Division change to fetch students accordingly
+        document.getElementById('attendanceDivision').addEventListener('change', async () => {
+            await fetchStudents();
+        });
+
+        // Handle form submission for adding a student
+        document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const division = document.getElementById('division').value;
+            const branch = document.getElementById('branch').value;
+            const student_id = document.getElementById('student_id').value;
+
+            const response = await fetch('/add-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, division, branch, student_id }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert('Student added successfully!');
+            } else {
+                alert('Error adding student: ' + data.error);
+            }
+        });
+
+        document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const student_id = document.getElementById('attendanceStudent').value;
+    const status = document.getElementById('status').value;
+    const date = new Date().toISOString().split('T')[0]; // Current date
+    const month = document.getElementById('attendanceMonth').value; // Get month input value
+
+    const response = await fetch('/mark-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id, date, status, month }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+        alert('Attendance marked successfully!');
+    } else {
+        alert('Error marking attendance: ' + data.error);
+    }
+});
+
+
+        // Fetching the attendance report
+        async function fetchAttendanceReport() {
+    const response = await fetch('/attendance-report');
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+        let html = '<table class="table"><thead><tr><th>Name</th><th>Division</th><th>Month</th><th>Present Days</th><th>Absent Days</th></tr></thead><tbody>';
+        data.forEach(student => {
+            html += `
+                <tr>
+                    <td>${student.name}</td>
+                    <td>${student.division}</td>
+                    <td>${student.month}</td>
+                    <td>${student.present_days}</td>
+                    <td>${student.absent_days}</td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        document.getElementById('attendanceReport').innerHTML = html;
+    } else {
+        document.getElementById('attendanceReport').innerHTML = '<p>No data available</p>';
+    }
+}
+
+        window.onload = fetchAttendanceReport;
+    </script>
+    <script>
+        document.querySelector('footer p').innerHTML = `&copy; ${new Date().getFullYear()} MyCollege Portal. All rights reserved.`;
+    </script>
+    
+</body>
+<footer class="bg-dark text-white text-center py-3 mt-5">
+    <p class="mb-0">&copy; 2025 MyCollege Portal. All rights reserved.</p>
+</footer>
+</html>
